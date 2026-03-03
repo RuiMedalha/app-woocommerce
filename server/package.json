@@ -1,0 +1,22 @@
+{
+  "name": "hotelequip-optimizer-server",
+  "version": "1.0.0",
+  "description": "Servidor Node.js com Express, SQLite, scraping, tratamento de imagens e leitura de Excel para hotelequip-optimizer.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cheerio": "^1.0.0",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.5",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
