@@ -1,30 +1,37 @@
-# Hotelequip Product Optimizer - docker-compose
-# Uso: docker-compose up -d
-# Aceder: http://localhost:4000
+# Hotelequip Optimizer — deploy isolado no VPS
+# Frontend servido pelo backend (porta 4000). Mapeamento: 5173 e 4000 no host.
+# Nginx Proxy Manager encaminha app.hotelequip.pt para 172.17.0.1:5173
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://app.hotelequip.pt/api}
+    image: hotelequip-optimizer:latest
+    container_name: hotelequip-optimizer
+    restart: unless-stopped
     ports:
-      - "4000:4000"
+      - "5173:4000"   # NPM (app.hotelequip.pt) -> host:5173 -> container:4000
+      - "4000:4000"   # Backend API (acesso direto se necessário)
+    env_file:
+      - .env.production
     environment:
-      - PORT=4000
-      - NODE_ENV=production
-      - DB_PATH=/app/data/database.sqlite
-      - UPLOADS_DIR=/app/server/uploads
-      # Preencher ou usar .env:
-      # - OPENAI_API_KEY=
-      # - WOOCOMMERCE_URL=
-      # - WOOCOMMERCE_CONSUMER_KEY=
-      # - WOOCOMMERCE_CONSUMER_SECRET=
-      # - AWS_ACCESS_KEY_ID=
-      # - AWS_SECRET_ACCESS_KEY=
-      # - S3_BUCKET=
-      # - AWS_REGION=eu-west-1
+      NODE_ENV: production
+      PORT: 4000
+      DB_PATH: /data/database/hotelequip.db
+      UPLOADS_DIR: /data/uploads
     volumes:
-      - optimizer-data:/app/data
-      - optimizer-uploads:/app/server/uploads
+      - hotelequip-database:/data/database   # SQLite persistente (fora do container)
+      - hotelequip-uploads:/data/uploads    # PDFs/Excels persistentes (fora do container)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
-  optimizer-data:
-  optimizer-uploads:
+  hotelequip-database:
+  hotelequip-uploads:

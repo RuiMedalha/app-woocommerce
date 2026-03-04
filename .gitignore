@@ -1,1 +1,54 @@
-node_modules
+# Dependências
+node_modules/
+**/node_modules/
+
+# Ambiente e segredos (nunca commitar)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+# .env.production pode ser commitado sem valores sensíveis; para segredos use .env no servidor
+# .env.production
+
+# Base de dados local / teste (persistência fica em volumes no Docker)
+server/src/database/
+server/database/
+**/*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Uploads locais (no deploy usamos volume Docker)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Build e artefactos
+client/dist/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE e OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker (opcional: descomente se não quiser commitar)
+# docker-compose.override.yml
+
+# Testes e cobertura
+coverage/
+.nyc_output/
+
+# Temporários
+tmp/
+temp/
+*.tmp
+.cache/
