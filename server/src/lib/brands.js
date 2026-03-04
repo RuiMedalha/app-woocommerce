@@ -5,16 +5,14 @@
 // - scraper: configuração base opcional para o scraping
 
 const brands = {
-  // Exemplo de marca genérica "ud"
-  ud: {
-    name: 'Universal Demo',
+  // Udex: prefixo UD, scraping em udex.pt
+  udex: {
+    name: 'Udex',
     sku_prefix: 'UD',
     dictionary_mapping: {
-      UD: '', // remover "UD" do SKU durante a limpeza
-      // outras siglas específicas da marca
+      UD: '',
     },
     scraper: {
-      // seletor fictício – adaptar ao site real
       productSelector: '.product-card',
       skuSelector: '.sku',
       nameSelector: '.product-title',
@@ -23,7 +21,19 @@ const brands = {
     },
   },
 
-  // Exemplo de outra marca
+  ud: {
+    name: 'Universal Demo',
+    sku_prefix: 'UD',
+    dictionary_mapping: { UD: '' },
+    scraper: {
+      productSelector: '.product-card',
+      skuSelector: '.sku',
+      nameSelector: '.product-title',
+      priceSelector: '.price',
+      imageSelector: 'img',
+    },
+  },
+
   abc: {
     name: 'Marca ABC',
     sku_prefix: 'ABC',

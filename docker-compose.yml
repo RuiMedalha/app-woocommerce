@@ -1,0 +1,30 @@
+# Hotelequip Product Optimizer - docker-compose
+# Uso: docker-compose up -d
+# Aceder: http://localhost:4000
+
+services:
+  app:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - DB_PATH=/app/data/database.sqlite
+      - UPLOADS_DIR=/app/server/uploads
+      # Preencher ou usar .env:
+      # - OPENAI_API_KEY=
+      # - WOOCOMMERCE_URL=
+      # - WOOCOMMERCE_CONSUMER_KEY=
+      # - WOOCOMMERCE_CONSUMER_SECRET=
+      # - AWS_ACCESS_KEY_ID=
+      # - AWS_SECRET_ACCESS_KEY=
+      # - S3_BUCKET=
+      # - AWS_REGION=eu-west-1
+    volumes:
+      - optimizer-data:/app/data
+      - optimizer-uploads:/app/server/uploads
+
+volumes:
+  optimizer-data:
+  optimizer-uploads:
