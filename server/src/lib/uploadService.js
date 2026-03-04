@@ -67,7 +67,7 @@ async function syncUploadsWithDatabase() {
     const name = ent.name;
     if (existingPaths.has(name)) continue;
     const ext = path.extname(name).toLowerCase();
-    const type = ext === '.pdf' ? 'pdf' : ext === '.xlsx' || ext === '.xls' ? 'excel' : 'other';
+    const type = ext === '.pdf' ? 'pdf' : ext === '.xlsx' || ext === '.xls' || ext === '.csv' ? 'excel' : 'other';
     const file_kind = type === 'pdf' ? 'library' : 'inventory';
     await db.insertUploadedFile({
       filename: name,
@@ -192,9 +192,44 @@ async function extractProductsFromExcel(filePath, columnMapping = {}) {
 }
 
 /**
+ * Extrai produtos de um CSV (Inventário). Cabeçalho: SKU, Nome, Descricao, Preco, ID (opcional).
+ */
+async function extractProductsFromCsv(filePath, columnMapping = {}) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = content.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+  const header = lines[0].split(/[,;\t]/).map((h) => h.trim());
+  const skuIdx = header.findIndex((h) => /sku/i.test(h)) >= 0 ? header.findIndex((h) => /sku/i.test(h)) : 0;
+  const nomeIdx = header.findIndex((h) => /nome|name|titulo|title/i.test(h)) >= 0 ? header.findIndex((h) => /nome|name|titulo|title/i.test(h)) : 1;
+  const descIdx = header.findIndex((h) => /desc/i.test(h)) >= 0 ? header.findIndex((h) => /desc/i.test(h)) : 2;
+  const precoIdx = header.findIndex((h) => /preco|price/i.test(h)) >= 0 ? header.findIndex((h) => /preco|price/i.test(h)) : 3;
+  const idIdx = header.findIndex((h) => /^id$/i.test(h)) >= 0 ? header.findIndex((h) => /^id$/i.test(h)) : -1;
+  const products = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(/[,;\t]/).map((c) => c.trim().replace(/^["']|["']$/g, ''));
+    const sku = (cells[skuIdx] || cells[nomeIdx] || '').trim();
+    const nome = (cells[nomeIdx] || cells[skuIdx] || '').trim();
+    if (!sku && !nome) continue;
+    const precoStr = cells[precoIdx];
+    const price = precoStr ? parseFloat(String(precoStr).replace(/[^\d.,]/g, '').replace(',', '.')) || null : null;
+    const woo_id = idIdx >= 0 && cells[idIdx] ? parseInt(cells[idIdx], 10) || null : null;
+    products.push({
+      sku: sku || `ROW-${i + 1}`,
+      original_title: nome,
+      original_description: cells[descIdx] || null,
+      original_short_description: (cells[descIdx] || '').slice(0, 500) || null,
+      raw_text_from_file: null,
+      price,
+      woo_id,
+    });
+  }
+  return products;
+}
+
+/**
  * Processa um ficheiro (path em uploads).
- * - PDF (Biblioteca Técnica): extrai apenas texto e guarda em knowledge_base. NÃO cria produtos.
- * - Excel (Inventário): cria produtos com SKU e ID (woo_id) do ficheiro.
+ * - PDF (Biblioteca): extrai texto e guarda em knowledge_base. NÃO cria produtos.
+ * - Excel/CSV (Inventário): cria produtos com SKU e ID (woo_id) do ficheiro.
  */
 async function processUploadedFile(relativePath, columnMapping = {}, options = {}) {
   ensureUploadsDir();
@@ -236,7 +271,27 @@ async function processUploadedFile(relativePath, columnMapping = {}, options = {
     return { count, products };
   }
 
-  throw new Error('Tipo de ficheiro não suportado. Use .pdf ou .xlsx');
+  if (ext === '.csv') {
+    const products = await extractProductsFromCsv(fullPath, columnMapping);
+    let count = 0;
+    for (const p of products) {
+      await db.insertProduct({
+        sku: p.sku || '',
+        status: 'Pendente',
+        brand: p.brand ?? null,
+        original_title: p.original_title || p.sku,
+        original_description: p.original_description ?? null,
+        original_short_description: p.original_short_description ?? null,
+        raw_text_from_file: p.raw_text_from_file ?? null,
+        price: p.price ?? null,
+        woo_id: p.woo_id ?? null,
+      });
+      count++;
+    }
+    return { count, products };
+  }
+
+  throw new Error('Tipo de ficheiro não suportado. Use .pdf, .xlsx, .xls ou .csv');
 }
 
 module.exports = {
@@ -248,5 +303,6 @@ module.exports = {
   extractTextFromPdf,
   extractProductsFromPdf,
   extractProductsFromExcel,
+  extractProductsFromCsv,
   processUploadedFile,
 };

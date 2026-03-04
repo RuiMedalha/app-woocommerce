@@ -13,7 +13,7 @@ const { processImageBuffer } = require('./lib/imageProcessor');
 const { uploadImage } = require('./lib/s3Service');
 const { importExcelFromPath } = require('./lib/excelImporter');
 const { expandAcronyms, generateFaqs, optimizeProductText } = require('./lib/openaiService');
-const { syncProducts } = require('./lib/wooCommerceService');
+const { syncProducts, pullFromWooCommerce } = require('./lib/wooCommerceService');
 const { processUploadedFile, ensureUploadsDir, getUploadsDir, syncUploadsWithDatabase } = require('./lib/uploadService');
 const uploadController = require('./controllers/uploadController');
 const { optimizeProduct } = require('./lib/optimizeService');
@@ -277,6 +277,23 @@ app.post('/woocommerce/sync', async (req, res) => {
   }
 });
 
+app.post('/api/woo/pull', async (req, res) => {
+  try {
+    const url = await db.getSetting('woocommerce_url');
+    const key = await db.getSetting('woocommerce_consumer_key');
+    const secret = await db.getSetting('woocommerce_consumer_secret');
+    if (url) process.env.WOOCOMMERCE_URL = url;
+    if (key) process.env.WOOCOMMERCE_CONSUMER_KEY = key;
+    if (secret) process.env.WOOCOMMERCE_CONSUMER_SECRET = secret;
+    const result = await pullFromWooCommerce(db);
+    await db.addActivityLog({ action: 'Sincronização WooCommerce (pull)', details: `${result.updated} atualizados, ${result.created} criados`, status: 'Success' });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ——— API conforme PDF ———
 app.get('/api/stats', (req, res) => {
   Promise.all([db.getProductStats(), db.getActivityLog(10)])
@@ -296,6 +313,12 @@ app.get('/api/upload', (req, res) => {
   const kind = req.query.kind || null;
   db.getUploadedFiles(50, kind)
     .then((rows) => res.json(rows))
+    .catch((err) => { console.error(err); res.status(500).json({ error: err.message }); });
+});
+
+app.get('/api/uploads', (req, res) => {
+  db.getUploadedFiles(100, null)
+    .then((rows) => res.json(rows || []))
     .catch((err) => { console.error(err); res.status(500).json({ error: err.message }); });
 });
 

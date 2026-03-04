@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'database', 'hotelequip.db');
+const DB_PATH = path.resolve(process.env.DB_PATH || path.join(__dirname, '..', 'database', 'hotelequip.db'));
 
 let db;
 
@@ -216,6 +216,26 @@ function getProductById(id) {
   const database = getDb();
   return new Promise((resolve, reject) => {
     database.get(`SELECT * FROM products WHERE id = ?`, [id], (err, row) => {
+      if (err) return reject(err);
+      resolve(row || null);
+    });
+  });
+}
+
+function getProductByWooId(wooId) {
+  const database = getDb();
+  return new Promise((resolve, reject) => {
+    database.get(`SELECT * FROM products WHERE woo_id = ?`, [wooId], (err, row) => {
+      if (err) return reject(err);
+      resolve(row || null);
+    });
+  });
+}
+
+function getProductBySku(sku) {
+  const database = getDb();
+  return new Promise((resolve, reject) => {
+    database.get(`SELECT * FROM products WHERE sku = ?`, [sku], (err, row) => {
       if (err) return reject(err);
       resolve(row || null);
     });
@@ -497,6 +517,8 @@ module.exports = {
   insertProduct,
   getAllProducts,
   getProductById,
+  getProductByWooId,
+  getProductBySku,
   updateProduct,
   getImagesByProductId,
   insertImage,

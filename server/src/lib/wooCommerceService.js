@@ -113,9 +113,92 @@ async function syncProducts(products) {
   return results;
 }
 
+/**
+ * Pull do WooCommerce: descarrega os produtos atuais do WooCommerce para a nossa base de dados.
+ * Atualiza por woo_id se existir; caso contrário cria nova entrada com sku e woo_id.
+ * Assim o Excel de exportação pode conter os dados do WooCommerce para edição e re-carga.
+ */
+async function pullFromWooCommerce(db) {
+  const { baseUrl } = getWooConfig();
+  const results = { updated: 0, created: 0, errors: [] };
+  let page = 1;
+  const perPage = 50;
+
+  while (true) {
+    const res = await axios.get(`${baseUrl}/wp-json/wc/v3/products`, {
+      params: { page, per_page: perPage },
+      headers: getAuthHeader(),
+    });
+    const list = res.data;
+    if (!list || list.length === 0) break;
+
+    for (const woo of list) {
+      try {
+        const wooId = woo.id;
+        const sku = (woo.sku || '').trim() || `WOO-${wooId}`;
+        const name = woo.name || '';
+        const desc = woo.description || '';
+        const shortDesc = woo.short_description || '';
+        const price = woo.price != null ? parseFloat(woo.price) : null;
+        const imageUrl = woo.images && woo.images[0] ? woo.images[0].src : null;
+        const rankTitle = (woo.meta_data || []).find((m) => m.key === 'rank_math_title');
+        const rankDesc = (woo.meta_data || []).find((m) => m.key === 'rank_math_description');
+
+        const existingByWooId = await db.getProductByWooId(wooId);
+        if (existingByWooId) {
+          await db.updateProduct(existingByWooId.id, {
+            original_title: name,
+            original_description: desc,
+            original_short_description: shortDesc,
+            price,
+            image_url: imageUrl,
+            optimized_meta_title: rankTitle ? rankTitle.value : existingByWooId.optimized_meta_title,
+            optimized_meta_description: rankDesc ? rankDesc.value : existingByWooId.optimized_meta_description,
+          });
+          results.updated++;
+        } else {
+          const existingBySku = await db.getProductBySku(sku);
+          if (existingBySku) {
+            await db.updateProduct(existingBySku.id, {
+              woo_id: wooId,
+              original_title: name,
+              original_description: desc,
+              original_short_description: shortDesc,
+              price,
+              image_url: imageUrl,
+            });
+            results.updated++;
+          } else {
+            await db.insertProduct({
+              sku,
+              status: 'Pendente',
+              woo_id: wooId,
+              original_title: name,
+              original_description: desc,
+              original_short_description: shortDesc,
+              price,
+              image_url: imageUrl,
+              optimized_meta_title: rankTitle ? rankTitle.value : null,
+              optimized_meta_description: rankDesc ? rankDesc.value : null,
+            });
+            results.created++;
+          }
+        }
+      } catch (err) {
+        results.errors.push({ woo_id: woo.id, sku: woo.sku, error: err.message });
+      }
+    }
+    if (list.length < perPage) break;
+    page++;
+  }
+
+  return results;
+}
+
 module.exports = {
   applyProductToWooCommerce,
   findProductIdBySku,
   syncProducts,
+  pullFromWooCommerce,
   getWooConfig,
 };

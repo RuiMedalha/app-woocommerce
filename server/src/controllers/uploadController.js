@@ -16,12 +16,13 @@ function upload(req, res) {
   }
 
   const filename = req.file.originalname || req.file.filename || 'ficheiro';
-  const filePath = req.file.filename; // nome com que o multer guardou no disco
+  const filePath = req.file.filename;
   const ext = path.extname(filename).toLowerCase();
-  const type = ext === '.pdf' ? 'pdf' : ext === '.xlsx' || ext === '.xls' ? 'excel' : 'other';
+  const type = ext === '.pdf' ? 'pdf' : ext === '.xlsx' || ext === '.xls' || ext === '.csv' ? 'excel' : 'other';
   const status = 'Aguardando processamento';
+  const fileKind = req.body && (req.body.file_kind === 'library' || req.body.file_kind === 'inventory') ? req.body.file_kind : null;
 
-  registerUploadedFile(filename, filePath, type, status)
+  registerUploadedFile(filename, filePath, type, status, fileKind)
     .then((id) => {
       db.getDb().get('SELECT * FROM uploaded_files WHERE id = ?', [id], (err, row) => {
         if (err) {
