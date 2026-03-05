@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+// Remover /api do fim para evitar URLs duplicadas (/api/api/...). Produção sem env: base vazia (relativo).
+const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
+const API_BASE = raw ? raw.replace(/\/api\/?$/i, '') : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
 
 export default function Brands() {
   const [brands, setBrands] = useState([])

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 
-// Em produção sem VITE_API_URL: caminhos relativos (mesmo origin). Em dev ou com VITE_API_URL: URL completo.
+// Base da API: nunca terminar em /api para evitar /api/api/... em rotas. Em produção sem env: caminhos relativos.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API = (import.meta.env.MODE === 'production' && !raw) ? '' : (raw || 'http://localhost:4000')
+const API_ORIGIN = (import.meta.env.MODE === 'production' && !raw) ? '' : (raw || 'http://localhost:4000')
+const API = API_ORIGIN ? API_ORIGIN.replace(/\/api\/?$/i, '') : ''
 const DEFAULT_COLUMNS = ['SKU', 'Nome', 'Preço', 'Descrição', 'Categoria', 'Imagem', 'ID']
 
 export default function ExcelMapping() {
@@ -45,7 +46,11 @@ export default function ExcelMapping() {
   const loadFiles = () => {
     fetch(`${API}/api/uploads`)
       .then((r) => {
-        if (!r.ok) throw new Error(r.status === 404 ? 'Endpoint não encontrado. Verifique o URL da API.' : `Erro ${r.status}`)
+        if (!r.ok) {
+          setInventoryFiles([])
+          setLibraryFiles([])
+          throw new Error(r.status === 404 ? 'Endpoint não encontrado. Verifique o URL da API.' : `Erro ${r.status}`)
+        }
         return r.json()
       })
       .then((data) => {
@@ -55,6 +60,8 @@ export default function ExcelMapping() {
       })
       .catch((err) => {
         console.error('loadFiles:', err)
+        setInventoryFiles([])
+        setLibraryFiles([])
       })
   }
 
