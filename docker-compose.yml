@@ -8,7 +8,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-https://app.hotelequip.pt/api}
+        # Vazio = front usa caminhos relativos à raiz (/api/upload). Evita duplicação api/api.
+        VITE_API_URL: ${VITE_API_URL:-}
     image: hotelequip-optimizer:latest
     container_name: hotelequip-optimizer
     restart: unless-stopped

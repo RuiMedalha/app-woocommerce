@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react'
 import ProductEditModal from '../components/ProductEditModal'
 
-// Base tal como definida (pode terminar em /api). Paths relativos: sem duplicar /api.
+// Produção: sem prefixo, apenas /api/... e /products (caminhos à raiz). Evita api/api.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API_BASE = raw ? raw : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
-/** URL para rotas sob /api. Se base já termina em /api, usa apenas o segmento. */
+const API_BASE = import.meta.env.MODE === 'production' ? '' : (raw || 'http://localhost:4000')
 function apiPath(segment) {
   if (!API_BASE) return `/api/${segment}`
-  return API_BASE.endsWith('/api') ? `${API_BASE}/${segment}` : `${API_BASE}/api/${segment}`
+  return `${API_BASE}/api/${segment}`
 }
-/** URL para rotas na raiz (ex.: products). */
 function rootPath(segment) {
-  const origin = !API_BASE ? '' : API_BASE.endsWith('/api') ? API_BASE.replace(/\/api\/?$/i, '') : API_BASE
-  return origin ? `${origin}/${segment}` : `/${segment}`
+  if (!API_BASE) return `/${segment}`
+  return `${API_BASE}/${segment}`
 }
 
 export default function Products() {

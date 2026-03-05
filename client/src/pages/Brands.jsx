@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 
-// Base tal como definida (pode terminar em /api). Paths relativos: sem duplicar /api.
+// Produção: sem prefixo, apenas /brands (caminho à raiz). Evita api/api.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API_BASE = raw ? raw : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
+const API_BASE = import.meta.env.MODE === 'production' ? '' : (raw || 'http://localhost:4000')
 function rootPath(segment) {
-  const origin = !API_BASE ? '' : API_BASE.endsWith('/api') ? API_BASE.replace(/\/api\/?$/i, '') : API_BASE
-  return origin ? `${origin}/${segment}` : `/${segment}`
+  if (!API_BASE) return `/${segment}`
+  return `${API_BASE}/${segment}`
 }
 
 export default function Brands() {

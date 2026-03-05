@@ -5,7 +5,8 @@
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/client
 
-ARG VITE_API_URL=https://app.hotelequip.pt/api
+# Vazio = front usa /api/upload (caminho à raiz). Evita duplicação api/api no mesmo domínio.
+ARG VITE_API_URL=
 ENV VITE_API_URL=${VITE_API_URL}
 
 COPY client/package.json client/package-lock.json* ./

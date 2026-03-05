@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 
-// Base da API tal como definida (pode terminar em /api). Paths relativos: se base já tem /api, usa /upload e /uploads sem duplicar.
+// Produção (mesmo domínio): sem prefixo, apenas caminhos absolutos à raiz (/api/upload). Evita api/api.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API_BASE = (import.meta.env.MODE === 'production' && !raw) ? '' : (raw || 'http://localhost:4000')
-/** Constrói URL para rotas sob /api (upload, uploads, upload/process). Não adiciona /api se a base já terminar em /api. */
+const API_BASE = import.meta.env.MODE === 'production' ? '' : (raw || 'http://localhost:4000')
+/** Rotas sob /api. Em produção retorna /api/segment; em dev usa API_BASE. */
 function apiPath(segment) {
   if (!API_BASE) return `/api/${segment}`
-  return API_BASE.endsWith('/api') ? `${API_BASE}/${segment}` : `${API_BASE}/api/${segment}`
+  return `${API_BASE}/api/${segment}`
 }
-/** Constrói URL para rotas na raiz do servidor (ex.: excel/import). */
+/** Rotas na raiz (ex.: excel/import, products, brands). */
 function rootPath(segment) {
-  const origin = !API_BASE ? '' : API_BASE.endsWith('/api') ? API_BASE.replace(/\/api\/?$/i, '') : API_BASE
-  return origin ? `${origin}/${segment}` : `/${segment}`
+  if (!API_BASE) return `/${segment}`
+  return `${API_BASE}/${segment}`
 }
 const DEFAULT_COLUMNS = ['SKU', 'Nome', 'Preço', 'Descrição', 'Categoria', 'Imagem', 'ID']
 
