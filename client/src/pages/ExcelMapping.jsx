@@ -1,9 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 
-// Base da API: nunca terminar em /api para evitar /api/api/... em rotas. Em produção sem env: caminhos relativos.
+// Base da API tal como definida (pode terminar em /api). Paths relativos: se base já tem /api, usa /upload e /uploads sem duplicar.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API_ORIGIN = (import.meta.env.MODE === 'production' && !raw) ? '' : (raw || 'http://localhost:4000')
-const API = API_ORIGIN ? API_ORIGIN.replace(/\/api\/?$/i, '') : ''
+const API_BASE = (import.meta.env.MODE === 'production' && !raw) ? '' : (raw || 'http://localhost:4000')
+/** Constrói URL para rotas sob /api (upload, uploads, upload/process). Não adiciona /api se a base já terminar em /api. */
+function apiPath(segment) {
+  if (!API_BASE) return `/api/${segment}`
+  return API_BASE.endsWith('/api') ? `${API_BASE}/${segment}` : `${API_BASE}/api/${segment}`
+}
+/** Constrói URL para rotas na raiz do servidor (ex.: excel/import). */
+function rootPath(segment) {
+  const origin = !API_BASE ? '' : API_BASE.endsWith('/api') ? API_BASE.replace(/\/api\/?$/i, '') : API_BASE
+  return origin ? `${origin}/${segment}` : `/${segment}`
+}
 const DEFAULT_COLUMNS = ['SKU', 'Nome', 'Preço', 'Descrição', 'Categoria', 'Imagem', 'ID']
 
 export default function ExcelMapping() {
@@ -44,7 +53,7 @@ export default function ExcelMapping() {
   }
 
   const loadFiles = () => {
-    fetch(`${API}/api/uploads`)
+    fetch(apiPath('uploads'))
       .then((r) => {
         if (!r.ok) {
           setInventoryFiles([])
@@ -77,7 +86,7 @@ export default function ExcelMapping() {
     setUploadError((e) => ({ ...e, [key]: null }))
     setUploading((u) => ({ ...u, [key]: true }))
     try {
-      const res = await fetch(`${API}/api/upload`, { method: 'POST', body: form })
+      const res = await fetch(apiPath('upload'), { method: 'POST', body: form })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
         loadFiles()
@@ -94,7 +103,7 @@ export default function ExcelMapping() {
   const processFile = async (fileId, columnMapping = null) => {
     setProcessing(fileId)
     try {
-      await fetch(`${API}/api/upload/process`, {
+      await fetch(apiPath('upload/process'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -112,7 +121,7 @@ export default function ExcelMapping() {
     if (!filePath.trim()) return
     setLoading(true)
     setImportResult(null)
-    fetch(`${API}/excel/import`, {
+    fetch(rootPath('excel/import'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filePath: filePath.trim() }),

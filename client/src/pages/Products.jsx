@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react'
 import ProductEditModal from '../components/ProductEditModal'
 
-// Remover /api do fim para evitar URLs duplicadas (/api/api/...). Produção sem env: base vazia (relativo).
+// Base tal como definida (pode terminar em /api). Paths relativos: sem duplicar /api.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API_BASE = raw ? raw.replace(/\/api\/?$/i, '') : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
+const API_BASE = raw ? raw : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
+/** URL para rotas sob /api. Se base já termina em /api, usa apenas o segmento. */
+function apiPath(segment) {
+  if (!API_BASE) return `/api/${segment}`
+  return API_BASE.endsWith('/api') ? `${API_BASE}/${segment}` : `${API_BASE}/api/${segment}`
+}
+/** URL para rotas na raiz (ex.: products). */
+function rootPath(segment) {
+  const origin = !API_BASE ? '' : API_BASE.endsWith('/api') ? API_BASE.replace(/\/api\/?$/i, '') : API_BASE
+  return origin ? `${origin}/${segment}` : `/${segment}`
+}
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -13,7 +23,7 @@ export default function Products() {
 
   const loadProducts = () => {
     setLoading(true)
-    fetch(`${API_BASE}/products`)
+    fetch(rootPath('products'))
       .then((r) => r.json())
       .then((data) => {
         setProducts(Array.isArray(data) ? data : [])
@@ -29,7 +39,7 @@ export default function Products() {
   const handleOptimize = async (id) => {
     setOptimizingId(id)
     try {
-      const res = await fetch(`${API_BASE}/api/products/${id}/optimize`, { method: 'POST' })
+      const res = await fetch(apiPath(`products/${id}/optimize`), { method: 'POST' })
       if (res.ok) {
         const updated = await res.json()
         setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)))
@@ -43,7 +53,7 @@ export default function Products() {
   }
 
   const handleSave = (productId, payload) => {
-    fetch(`${API_BASE}/products/${productId}`, {
+    fetch(rootPath(`products/${productId}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

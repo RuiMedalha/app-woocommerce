@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react'
 
-// Remover /api do fim para evitar URLs duplicadas (/api/api/...). Produção sem env: base vazia (relativo).
+// Base tal como definida (pode terminar em /api). Paths relativos: sem duplicar /api.
 const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
-const API_BASE = raw ? raw.replace(/\/api\/?$/i, '') : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
+const API_BASE = raw ? raw : (import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000')
+function rootPath(segment) {
+  const origin = !API_BASE ? '' : API_BASE.endsWith('/api') ? API_BASE.replace(/\/api\/?$/i, '') : API_BASE
+  return origin ? `${origin}/${segment}` : `/${segment}`
+}
 
 export default function Brands() {
   const [brands, setBrands] = useState([])
@@ -12,7 +16,7 @@ export default function Brands() {
   const [form, setForm] = useState({ key: '', name: '', sku_prefix: '', dictionary: {} })
 
   useEffect(() => {
-    fetch(`${API_BASE}/brands`)
+    fetch(rootPath('brands'))
       .then((r) => r.json())
       .then((data) => setBrands(Array.isArray(data) ? data : []))
       .catch((e) => setError(e.message))
