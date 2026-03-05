@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+// Em produção sem VITE_API_URL: caminhos relativos (mesmo origin). Em dev ou com VITE_API_URL: URL completo.
+const raw = (import.meta.env.VITE_API_URL ?? '').toString().trim().replace(/\/$/, '')
+const API = (import.meta.env.MODE === 'production' && !raw) ? '' : (raw || 'http://localhost:4000')
 const DEFAULT_COLUMNS = ['SKU', 'Nome', 'Preço', 'Descrição', 'Categoria', 'Imagem', 'ID']
 
 export default function ExcelMapping() {
@@ -14,6 +16,7 @@ export default function ExcelMapping() {
   const [inventoryFiles, setInventoryFiles] = useState([])
   const [libraryFiles, setLibraryFiles] = useState([])
   const [uploading, setUploading] = useState({ inv: false, lib: false })
+  const [uploadError, setUploadError] = useState({ inv: null, lib: null })
   const [processing, setProcessing] = useState(null)
   const invInputRef = useRef(null)
   const libInputRef = useRef(null)
@@ -41,13 +44,18 @@ export default function ExcelMapping() {
 
   const loadFiles = () => {
     fetch(`${API}/api/uploads`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(r.status === 404 ? 'Endpoint não encontrado. Verifique o URL da API.' : `Erro ${r.status}`)
+        return r.json()
+      })
       .then((data) => {
         const all = Array.isArray(data) ? data : []
         setInventoryFiles(all.filter((f) => f.file_kind === 'inventory' || f.file_kind == null))
         setLibraryFiles(all.filter((f) => f.file_kind === 'library'))
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('loadFiles:', err)
+      })
   }
 
   useEffect(() => {
@@ -55,15 +63,24 @@ export default function ExcelMapping() {
   }, [])
 
   const uploadFile = async (file, fileKind) => {
+    const key = fileKind === 'inventory' ? 'inv' : 'lib'
     const form = new FormData()
     form.append('file', file)
     form.append('file_kind', fileKind)
-    setUploading((u) => ({ ...u, [fileKind === 'inventory' ? 'inv' : 'lib']: true }))
+    setUploadError((e) => ({ ...e, [key]: null }))
+    setUploading((u) => ({ ...u, [key]: true }))
     try {
       const res = await fetch(`${API}/api/upload`, { method: 'POST', body: form })
-      if (res.ok) loadFiles()
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        loadFiles()
+      } else {
+        setUploadError((e) => ({ ...e, [key]: data.error || `Erro do servidor (${res.status}).` }))
+      }
+    } catch (err) {
+      setUploadError((e) => ({ ...e, [key]: err.message || 'Falha de rede. Verifique a ligação e CORS/URL da API.' }))
     } finally {
-      setUploading((u) => ({ ...u, [fileKind === 'inventory' ? 'inv' : 'lib']: false }))
+      setUploading((u) => ({ ...u, [key]: false }))
     }
   }
 
@@ -140,11 +157,17 @@ export default function ExcelMapping() {
             }}
           />
           {uploading.inv ? (
-            <p className="text-[var(--color-ink-muted)]">A carregar...</p>
+            <p className="text-[var(--color-ink-muted)] flex items-center justify-center gap-2">
+              <span className="inline-block h-4 w-4 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" aria-hidden />
+              A carregar...
+            </p>
           ) : (
             <p className="text-[var(--color-ink-muted)]">Clique ou arraste um ficheiro .xlsx, .xls ou .csv para aqui.</p>
           )}
         </div>
+        {uploadError.inv && (
+          <p className="mb-2 text-sm text-red-600" role="alert">{uploadError.inv}</p>
+        )}
         <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead>
@@ -208,11 +231,17 @@ export default function ExcelMapping() {
             }}
           />
           {uploading.lib ? (
-            <p className="text-[var(--color-ink-muted)]">A carregar...</p>
+            <p className="text-[var(--color-ink-muted)] flex items-center justify-center gap-2">
+              <span className="inline-block h-4 w-4 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" aria-hidden />
+              A carregar...
+            </p>
           ) : (
             <p className="text-[var(--color-ink-muted)]">Clique ou arraste um ficheiro .pdf para aqui.</p>
           )}
         </div>
+        {uploadError.lib && (
+          <p className="mb-2 text-sm text-red-600" role="alert">{uploadError.lib}</p>
+        )}
         <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead>
