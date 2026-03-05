@@ -219,6 +219,7 @@ async function optimizeProduct(productId) {
     }
   }
 
+  const model = (await db.getSetting('openai_model')) || process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const result = await runOptimizationPrompt(
     {
       ...product,
@@ -227,7 +228,7 @@ async function optimizeProduct(productId) {
       supplierData,
       knowledgeContext,
     },
-    process.env.OPENAI_MODEL || 'gpt-4o-mini'
+    model
   );
 
   await db.updateProduct(productId, {

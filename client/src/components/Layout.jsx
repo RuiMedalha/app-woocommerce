@@ -5,6 +5,7 @@ const nav = [
   { to: '/marcas', label: 'Gestão de Marcas', icon: '🏷️' },
   { to: '/excel', label: 'Mapeamento Excel', icon: '📋' },
   { to: '/produtos', label: 'Produtos', icon: '📦' },
+  { to: '/configuracoes', label: 'Configurações', icon: '⚙️' },
 ]
 
 export default function Layout() {

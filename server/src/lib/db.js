@@ -456,6 +456,28 @@ function getUploadedFiles(limit = 50, fileKind = null) {
   });
 }
 
+/** Devolve um ficheiro carregado por id. */
+function getUploadedFileById(id) {
+  const database = getDb();
+  return new Promise((resolve, reject) => {
+    database.get(`SELECT * FROM uploaded_files WHERE id = ?`, [id], (err, row) => {
+      if (err) return reject(err);
+      resolve(row || null);
+    });
+  });
+}
+
+/** Remove um ficheiro carregado da base de dados. */
+function deleteUploadedFile(id) {
+  const database = getDb();
+  return new Promise((resolve, reject) => {
+    database.run(`DELETE FROM uploaded_files WHERE id = ?`, [id], function (err) {
+      if (err) return reject(err);
+      resolve(this.changes);
+    });
+  });
+}
+
 /** Devolve todos os valores da coluna path (para sincronização com a pasta uploads). */
 function getUploadedFilePaths() {
   const database = getDb();
@@ -530,6 +552,8 @@ module.exports = {
   getProductStats,
   insertUploadedFile,
   updateUploadedFile,
+  getUploadedFileById,
+  deleteUploadedFile,
   getUploadedFiles,
   getUploadedFilePaths,
   insertKnowledgeBase,

@@ -103,17 +103,31 @@ export default function ExcelMapping() {
   const processFile = async (fileId, columnMapping = null) => {
     setProcessing(fileId)
     try {
-      await fetch(apiPath('upload/process'), {
+      const mapToSend = columnMapping ?? columnMapToApi()
+      const res = await fetch(apiPath('upload/process'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileId,
-          columnMapping: columnMapping || mapping,
-        }),
+        body: JSON.stringify({ fileId, columnMapping: mapToSend }),
       })
-      loadFiles()
+      if (res.ok) loadFiles()
+      else loadFiles()
     } finally {
       setProcessing(null)
+    }
+  }
+
+  const deleteFile = async (fileId, errorKey = 'inv') => {
+    if (!confirm('Remover este ficheiro do servidor e da lista?')) return
+    setUploadError((e) => ({ ...e, [errorKey]: null }))
+    try {
+      const res = await fetch(apiPath(`upload/${fileId}`), { method: 'DELETE' })
+      if (res.ok) loadFiles()
+      else {
+        const data = await res.json().catch(() => ({}))
+        setUploadError((e) => ({ ...e, [errorKey]: data.error || 'Erro ao apagar.' }))
+      }
+    } catch (err) {
+      setUploadError((e) => ({ ...e, [errorKey]: err.message || 'Falha ao apagar.' }))
     }
   }
 
@@ -203,19 +217,27 @@ export default function ExcelMapping() {
                 inventoryFiles.map((f) => (
                   <tr key={f.id} className="border-b border-[var(--color-border)] last:border-0">
                     <td className="px-4 py-2 text-[var(--color-ink)]">{f.filename || f.path}</td>
-                    <td className="px-4 py-2">{f.status || 'Aguardando processamento'}</td>
-                    <td className="px-4 py-2">{f.product_count != null ? f.product_count : '—'}</td>
                     <td className="px-4 py-2">
-                      {f.status === 'Aguardando processamento' && (
-                        <button
-                          type="button"
-                          disabled={processing === f.id}
-                          onClick={() => processFile(f.id, columnMapToApi())}
-                          className="rounded-[var(--radius-button)] bg-[var(--color-accent)] px-2 py-1 text-white text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
-                        >
-                          {processing === f.id ? 'A processar...' : 'Processar'}
-                        </button>
-                      )}
+                      {processing === f.id ? 'A Processar...' : (f.status === 'Concluído' ? 'Importado' : (f.status || 'Aguardando processamento'))}
+                    </td>
+                    <td className="px-4 py-2">{f.product_count != null ? f.product_count : '—'}</td>
+                    <td className="px-4 py-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={processing === f.id}
+                        onClick={() => processFile(f.id, columnMapToApi())}
+                        className="rounded-[var(--radius-button)] bg-[var(--color-accent)] px-2 py-1 text-white text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                      >
+                        {processing === f.id ? 'A processar...' : 'Processar'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={processing === f.id}
+                        onClick={() => deleteFile(f.id, 'inv')}
+                        className="rounded-[var(--radius-button)] border border-[var(--color-border)] px-2 py-1 text-sm text-[var(--color-ink)] hover:bg-red-50 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+                      >
+                        Apagar
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -276,18 +298,26 @@ export default function ExcelMapping() {
                 libraryFiles.map((f) => (
                   <tr key={f.id} className="border-b border-[var(--color-border)] last:border-0">
                     <td className="px-4 py-2 text-[var(--color-ink)]">{f.filename || f.path}</td>
-                    <td className="px-4 py-2">{f.status || 'Aguardando processamento'}</td>
                     <td className="px-4 py-2">
-                      {f.status === 'Aguardando processamento' && (
-                        <button
-                          type="button"
-                          disabled={processing === f.id}
-                          onClick={() => processFile(f.id)}
-                          className="rounded-[var(--radius-button)] bg-[var(--color-accent)] px-2 py-1 text-white text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
-                        >
-                          {processing === f.id ? 'A processar...' : 'Processar'}
-                        </button>
-                      )}
+                      {processing === f.id ? 'A Processar...' : (f.status === 'Concluído' ? 'Importado' : (f.status || 'Aguardando processamento'))}
+                    </td>
+                    <td className="px-4 py-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={processing === f.id}
+                        onClick={() => processFile(f.id)}
+                        className="rounded-[var(--radius-button)] bg-[var(--color-accent)] px-2 py-1 text-white text-sm hover:bg-[var(--color-accent-hover)] disabled:opacity-50"
+                      >
+                        {processing === f.id ? 'A processar...' : 'Processar'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={processing === f.id}
+                        onClick={() => deleteFile(f.id, 'lib')}
+                        className="rounded-[var(--radius-button)] border border-[var(--color-border)] px-2 py-1 text-sm text-[var(--color-ink)] hover:bg-red-50 hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+                      >
+                        Apagar
+                      </button>
                     </td>
                   </tr>
                 ))

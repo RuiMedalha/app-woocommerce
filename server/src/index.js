@@ -1,3 +1,4 @@
+const fs = require('fs');
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
@@ -358,7 +359,7 @@ app.post('/api/upload/process', async (req, res) => {
   if (!pathToUse) return res.status(400).json({ error: 'path ou fileId obrigatório.' });
   try {
     const result = await processUploadedFile(pathToUse, columnMapping || {}, { brand_id: brand_id != null ? brand_id : null });
-    const updateFields = { status: 'Concluído', product_count: result.count ?? 0 };
+    const updateFields = { status: 'Importado', product_count: result.count ?? 0 };
     if (result.extracted_text != null) updateFields.extracted_text = result.extracted_text;
     if (fileId) await db.updateUploadedFile(fileId, updateFields);
     const msg = result.count > 0 ? `${result.count} produtos extraídos` : 'Texto guardado na Biblioteca de Conhecimento';
@@ -366,6 +367,26 @@ app.post('/api/upload/process', async (req, res) => {
     res.json({ count: result.count ?? 0, knowledge_id: result.knowledge_id, extracted_text: result.extracted_text });
   } catch (err) {
     if (fileId) await db.updateUploadedFile(fileId, { status: 'Erro', error_message: err.message });
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/upload/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID obrigatório.' });
+  try {
+    const row = await db.getUploadedFileById(id);
+    if (!row) return res.status(404).json({ error: 'Ficheiro não encontrado.' });
+    const uploadsDir = getUploadsDir();
+    const filePath = path.join(uploadsDir, row.path);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    await db.deleteUploadedFile(id);
+    db.addActivityLog({ action: `Ficheiro removido: ${row.filename || row.path}`, details: String(id), status: 'Success' });
+    res.json({ ok: true });
+  } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }

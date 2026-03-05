@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard'
 import Brands from './pages/Brands'
 import ExcelMapping from './pages/ExcelMapping'
 import Products from './pages/Products'
+import Settings from './pages/Settings'
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="marcas" element={<Brands />} />
         <Route path="excel" element={<ExcelMapping />} />
         <Route path="produtos" element={<Products />} />
+        <Route path="configuracoes" element={<Settings />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
