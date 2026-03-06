@@ -502,7 +502,6 @@ app.get('/health', (req, res) => {
 });
 
 // Servir frontend build (Docker / produção)
-const fs = require('fs');
 const clientDist = process.env.CLIENT_DIST || path.join(__dirname, '..', '..', 'client', 'dist');
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
